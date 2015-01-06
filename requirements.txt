@@ -1,0 +1,4 @@
+boto==2.34.0
+PyYAML==3.11 
+Flask==0.10.1
+Flask-RESTful==0.3.1

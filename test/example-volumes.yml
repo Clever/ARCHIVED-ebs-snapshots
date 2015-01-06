@@ -1,0 +1,9 @@
+vol-1:
+  interval: yearly
+  max_snapshots: 0
+vol-2:
+  interval: monthly 
+  max_snapshots: 1 
+vol-3:
+  interval: hourly
+  max_snapshots: 2 
