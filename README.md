@@ -2,29 +2,58 @@
 
 Create and clean up Amazon EBS snapshots according to a schedule.
 
+(Thanks for `skymill` for the basis of this work: https://github.com/skymill/automated-ebs-snapshots)
+
 ## Usage
 
-Run once from command line:
-
 ```
-python client.py --access-key-id=$AWS_ACCESS_KEY --secret-access-key=$AWS_SECRET_KEY --region=$AWS_REGION --s3file=$PATH
+python main.py 
 ```
 
-Run as a service:
+This starts long-running, daemonized process.
+
+**Required Env**
 
 ```
-python client.py --access-key-id=$AWS_ACCESS_KEY --secret-access-key=$AWS_SECRET_KEY --region=$AWS_REGION --s3file=$PATH
+AWS_ACCESS_KEY  # Your AWS Credentials
+AWS_SECRET_KEY  # Your AWS Credentials
+AWS_REGION      # AWS Region, e.g. us-west-1
+CONFIG_PATH     # Path to backup config. May be local file or s3 path (see "Configuration" below)
+```
+
+### Dockerized 
+
+Build the docker image:
+
+```
+docker build --tag=local/ebs-snapshots $(pwd)
+```
+
+Run as a docker container, making sure to specify required env vars:
+
+```
+docker run \
+-e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+-e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+-e AWS_REGION=$AWS_REGION \
+-e BACKUP_CONFIG=$BACKUP_CONFIG \
+local/ebs-snapshots
 ```
 
 ## Configuration
 
-Here is an example configuration for two volumes to be snapshotted. Each specifies the volume id,
-frequency of snapshots, and maximum number of snapshots to keep.
+Configuration files are written in `yaml` (a superset of JSON) format.
+Top level keys are volume ids. These map to a dict of parameters:
+
+- `interval` - frequency of snapshots: hourly, daily, monthly, yearly
+- `max_snapshots` - max snapshots to keep, 0 keeps all
+
+Here is an example configuration file to automate snapshots for two volumes: 
 
 ```yaml
-vol-fake1234:       # volume id
-  interval: daily   # frequency of snapshots: hourly, daily, monthly, yearly
-  max_snapshots: 7  # max snapshots to keep, 0 keeps all
+vol-fake1234:
+  interval: daily  
+  max_snapshots: 7 
 vol-fake5678:
   interval: hourly 
   max_snapshots: 48 
@@ -35,3 +64,4 @@ vol-fake5678:
 ```
 make test
 ```
+

@@ -17,7 +17,7 @@ publish:
     docker_server: {{docker_server}}
     docker_version: 1.2
     email: {{docker_email}}
-    image_name: clever/automated-ebs-snapshots
+    image_name: clever/ebs-snapshots
     password: {{docker_password}}
     push_latest: true
     registry_login: true
