@@ -22,4 +22,4 @@ publish:
     push_latest: true
     registry_login: true
     username: {{docker_username}}
-    branch: birthday
+    branch: master
