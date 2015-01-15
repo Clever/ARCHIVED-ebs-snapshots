@@ -16,7 +16,7 @@ class S3BackupConfig(FileBackupConfig):
         self.secret_key=aws_secret_access_key
 
     def refresh(self):
-        """ Read s3 path and update backup config """
+        """ Read s3 path and return parsed yml """
         # Get data from s3
         s3_connection = connect_s3(self.access_key, self.secret_key)
         s3_bucket = urlparse(self.path).hostname
@@ -27,5 +27,5 @@ class S3BackupConfig(FileBackupConfig):
         s = k.get_contents_as_string()
         
         # Update backup config
-        self.config = yaml.load(s)
+        return yaml.load(s)
 

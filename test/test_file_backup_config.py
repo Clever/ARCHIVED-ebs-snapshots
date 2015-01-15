@@ -1,6 +1,7 @@
 from ebs_snapshots.file_backup_config import FileBackupConfig
 import unittest
 import yaml
+from jsonschema import ValidationError
 
 
 class TestFileBackupConfig(unittest.TestCase):
@@ -28,3 +29,19 @@ class TestFileBackupConfig(unittest.TestCase):
             data['vol-2'], {'interval': 'monthly', 'max_snapshots': 1})
         self.assertEquals(
             data['vol-3'], {'interval': 'hourly', 'max_snapshots': 2})
+
+    def test_errors_on_invalid_config(self):
+        with self.assertRaises(AssertionError):
+            FileBackupConfig._validate_config("")
+
+        with self.assertRaises(ValidationError):
+            FileBackupConfig._validate_config({"some_other": "dict"})
+
+    def test_valid_config(self):
+        config = {
+            "vol-fake1111": {"max_snapshots": 5, "interval": "daily"},
+            "vol-fake2222": {"interval": "hourly"},
+            "vol-fake3333": {"max_snapshots": 3},
+            "vol-fake4444": {},
+        }
+        FileBackupConfig._validate_config(config)
