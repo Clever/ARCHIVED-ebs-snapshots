@@ -1,7 +1,5 @@
-# import client
 import time
 import os
-from daemon import Daemon
 from file_backup_config import FileBackupConfig
 from s3_backup_config import S3BackupConfig
 import snapshot_manager
@@ -30,14 +28,16 @@ def create_snapshots(backup_conf):
         interval = params.get('interval', 'daily')
         max_snapshots = params.get('max_snapshots', 0)
         name = params.get('name', '')
-        snapshot_manager.run(ec2_connection, volume, interval, max_snapshots, name)
+        snapshot_manager.run(
+            ec2_connection, volume, interval, max_snapshots, name)
 
 
-class EbsSnapshotsDaemon(Daemon):
-
-    def run(self, interval=300):
-        backup_conf = get_backup_conf(config_path)
-
-        while True:
-            create_snapshots(backup_conf)
-            time.sleep(interval)
+def snapshot_timer(interval=300):
+    """ Gets backup conf, every x seconds checks for snapshots to create/delete,
+        and performs the create/delete operations as needed """
+    # Main loop gets the backup conf once.
+    # Thereafter they are responsible for updating their own data
+    backup_conf = get_backup_conf(config_path)
+    while True:
+        create_snapshots(backup_conf)
+        time.sleep(interval)
