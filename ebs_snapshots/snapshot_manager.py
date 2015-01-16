@@ -12,7 +12,8 @@ VALID_INTERVALS = [
     u'monthly',
     u'yearly']
 
-def run(connection, volume_id, interval='daily', max_snapshots=0):
+
+def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
     """ Ensure that we have snapshots for a given volume
 
     :type connection: boto.ec2.connection.EC2Connection
@@ -24,17 +25,17 @@ def run(connection, volume_id, interval='daily', max_snapshots=0):
     :returns: None
     """
     try:
-      volumes = connection.get_all_volumes([volume_id])
+        volumes = connection.get_all_volumes([volume_id])
     except EC2ResponseError as error:
-      print kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"error": error.message})
-      return
-    
+        print kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"error": error.message})
+        return
+
     for volume in volumes:
-        _ensure_snapshot(connection, volume, interval)
+        _ensure_snapshot(connection, volume, interval, name)
         _remove_old_snapshots(connection, volume, max_snapshots)
 
 
-def _create_snapshot(volume):
+def _create_snapshot(connection, volume, name=''):
     """ Create a new snapshot
 
     :type volume: boto.ec2.volume.Volume
@@ -43,15 +44,20 @@ def _create_snapshot(volume):
     """
     print kayvee.formatLog("ebs-snapshots", "info", "creating new snapshot", {"volume": volume.id})
     snapshot = volume.create_snapshot(
-        description="Automatic snapshot by Automated EBS Snapshots")
+        description="automatic snapshot by ebs-snapshots")
+    if not name:
+        name = '{}-snapshot'.format(volume.id)
+    connection.create_tags(
+        [snapshot.id], dict(Name=name, Creator='ebs-snapshots'))
     print kayvee.formatLog("ebs-snapshots", "info", "created snapshot successfully", {
+        "name": name,
         "volume": volume.id,
         "snapshot": snapshot.id
     })
     return snapshot
 
 
-def _ensure_snapshot(connection, volume, interval):
+def _ensure_snapshot(connection, volume, interval, name):
     """ Ensure that a given volume has an appropriate snapshot
 
     :type connection: boto.ec2.connection.EC2Connection
@@ -71,10 +77,10 @@ def _ensure_snapshot(connection, volume, interval):
 
     # Create a snapshot if we don't have any
     if not snapshots:
-        _create_snapshot(volume)
+        _create_snapshot(connection, volume, name)
         return
 
-    min_delta = 3600*24*365*10  # 10 years :)
+    min_delta = 3600 * 24 * 365 * 10  # 10 years :)
     for snapshot in snapshots:
         timestamp = datetime.datetime.strptime(
             snapshot.start_time,
@@ -86,19 +92,19 @@ def _ensure_snapshot(connection, volume, interval):
             min_delta = delta_seconds
 
     print kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old'.format(volume.id, min_delta))
-   
+
     if interval == 'hourly' and min_delta > 3600:
-        _create_snapshot(volume)
+        _create_snapshot(connection, volume, name)
     elif interval == 'daily' and min_delta > 3600*24:
-        _create_snapshot(volume)
+        _create_snapshot(connection, volume, name)
     elif interval == 'weekly' and min_delta > 3600*24*7:
-        _create_snapshot(volume)
+        _create_snapshot(connection, volume, name)
     elif interval == 'monthly' and min_delta > 3600*24*30:
-        _create_snapshot(volume)
+        _create_snapshot(connection, volume, name)
     elif interval == 'yearly' and min_delta > 3600*24*365:
-        _create_snapshot(volume)
+        _create_snapshot(connection, volume, name)
     else:
-        print kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id}) 
+        print kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id})
 
 
 def _remove_old_snapshots(connection, volume, max_snapshots):

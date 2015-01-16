@@ -29,7 +29,8 @@ def create_snapshots(backup_conf):
         print kayvee.formatLog("ebs-snapshots", "info", "about to take ebs snapshot {} - {}".format(volume, params))
         interval = params.get('interval', 'daily')
         max_snapshots = params.get('max_snapshots', 0)
-        snapshot_manager.run(ec2_connection, volume, interval, max_snapshots)
+        name = params.get('name', '')
+        snapshot_manager.run(ec2_connection, volume, interval, max_snapshots, name)
 
 
 class EbsSnapshotsDaemon(Daemon):

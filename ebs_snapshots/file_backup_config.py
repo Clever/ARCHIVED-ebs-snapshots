@@ -9,6 +9,7 @@ schema = {
     "properties": {
             "max_snapshots": {"type": "number"},
             "interval": {"type": "string"},
+            "name": {"type": "string"},
     },
     "additionalProperties": False,
 }
