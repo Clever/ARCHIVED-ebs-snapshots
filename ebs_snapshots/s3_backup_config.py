@@ -1,19 +1,20 @@
 import yaml
-from file_backup_config import FileBackupConfig
+from backup_config import BackupConfig
 import kayvee
 from boto import connect_s3
 import boto
 from urlparse import urlparse
 
-class S3BackupConfig(FileBackupConfig):
-    
+
+class S3BackupConfig(BackupConfig):
+
     config = {}
     path = ""
 
     def __init__(self, path, aws_access_key_id, aws_secret_access_key):
         self.path = path
-        self.access_key=aws_access_key_id
-        self.secret_key=aws_secret_access_key
+        self.access_key = aws_access_key_id
+        self.secret_key = aws_secret_access_key
 
     def refresh(self):
         """ Read s3 path and return parsed yml """
@@ -25,7 +26,6 @@ class S3BackupConfig(FileBackupConfig):
         k = boto.s3.key.Key(bucket)
         k.key = s3_path
         s = k.get_contents_as_string()
-        
+
         # Update backup config
         return yaml.load(s)
-
