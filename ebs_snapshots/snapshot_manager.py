@@ -27,7 +27,7 @@ def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
     try:
         volumes = connection.get_all_volumes([volume_id])
     except EC2ResponseError as error:
-        print kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"error": error.message})
+        print kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"msg": error.message})
         return
 
     for volume in volumes:
@@ -121,7 +121,7 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
         print kayvee.formatLog("ebs-snapshots", "warning", "invalid max_snapshots value", {
             "volume": volume.id,
             "max_snapshots": retention
-        }) 
+        })
         return
     snapshots = connection.get_all_snapshots(filters={'volume-id': volume.id})
 
@@ -142,7 +142,7 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
         except EC2ResponseError as error:
             print kayvee.formatLog("ebs-snapshots", "warning", "could not remove snapshot", {
                 "snapshot": snapshot.id,
-                "error": error.message
+                "msg": error.message
             })
 
     print kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshots")
