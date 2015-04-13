@@ -1,25 +1,24 @@
 image: python2.7
-script:
-  - make test
 notify:
   email:
     recipients:
-      - drone@clever.com
-  hipchat:
-    room: Clever-Dev-CI
-    token: {{hipchatToken}}
-    on_started: true
-    on_success: true
+    - drone@clever.com
+  slack:
     on_failure: true
+    on_started: false
+    on_success: false
+    webhook_url: $$slack_webhook
 publish:
   docker:
-    docker_port: 4243
-    docker_server: {{docker_server}}
-    docker_version: 1.2
-    email: {{docker_email}}
+    docker_host: $$docker_server
+    email: $$docker_email
     image_name: clever/ebs-snapshots
-    password: {{docker_password}}
-    push_latest: true
+    password: $$docker_password
     registry_login: true
-    username: {{docker_username}}
-    branch: master
+    tags:
+    - $(git rev-parse --short HEAD)
+    username: $$docker_username
+    when:
+      branch: master
+script:
+- make test
