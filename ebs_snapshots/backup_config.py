@@ -32,6 +32,9 @@ class BackupConfig:
         ...
     }
     """
+
+    path = None
+
     @classmethod
     def _validate_config(cls, new_config):
         """ Raises exception if config loaded from file doesn't match expected schema """
@@ -49,3 +52,6 @@ class BackupConfig:
             logging.info(kayvee.formatLog("ebs-snapshots", "warning", "unable to load backup config", {"path": self.path, "error": str(e)}))
 
         return self.config
+
+    def refresh(self):
+      raise NotImplementedError("refresh() must be implemented in subclasses")
