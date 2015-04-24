@@ -28,7 +28,7 @@ def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
     try:
         volumes = connection.get_all_volumes([volume_id])
     except EC2ResponseError as error:
-        logging.info(kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"msg": error.message}))
+        logging.error(kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"msg": error.message}))
         return
 
     for volume in volumes:
@@ -68,7 +68,7 @@ def _ensure_snapshot(connection, volume, interval, name):
     :returns: None
     """
     if interval not in VALID_INTERVALS:
-        logging.info(kayvee.formatLog("ebs-snapshots", "warning", "invalid snapshotting interval", {
+        logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "invalid snapshotting interval", {
             "volume": volume.id,
             "interval": interval
         }))
@@ -119,7 +119,7 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
     """
     retention = max_snapshots
     if not type(retention) is int and retention >= 0:
-        logging.info(kayvee.formatLog("ebs-snapshots", "warning", "invalid max_snapshots value", {
+        logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "invalid max_snapshots value", {
             "volume": volume.id,
             "max_snapshots": retention
         }))
@@ -141,7 +141,7 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
         try:
             snapshot.delete()
         except EC2ResponseError as error:
-            logging.info(kayvee.formatLog("ebs-snapshots", "warning", "could not remove snapshot", {
+            logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "could not remove snapshot", {
                 "snapshot": snapshot.id,
                 "msg": error.message
             }))

@@ -49,7 +49,7 @@ class BackupConfig:
             self._validate_config(new_config)
             self.config = new_config
         except Exception as e:
-            logging.info(kayvee.formatLog("ebs-snapshots", "warning", "unable to load backup config", {"path": self.path, "error": str(e)}))
+            logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "unable to load backup config", {"path": self.path, "error": str(e)}))
 
         return self.config
 
