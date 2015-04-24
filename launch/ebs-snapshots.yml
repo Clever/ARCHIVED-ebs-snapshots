@@ -1,9 +1,9 @@
 run:
   type: docker
-env: 
+env:
 - AWS_ACCESS_KEY_ID
 - AWS_SECRET_ACCESS_KEY
 - AWS_REGION
 - BACKUP_CONFIG
 resources:
-  cpu: 1
+  cpu: .1
