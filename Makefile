@@ -11,7 +11,10 @@ release:
 
 deps:
 	pip install -r requirements-dev.txt
-	# python setup.py develop
+
+# Check for errors in Python files
+pylint: deps
+	find . | grep .py$$ | xargs pylint -E
 
 lint: deps
 	pep8 --config ./pep8 . || true
@@ -19,5 +22,5 @@ lint: deps
 format: deps
 	autopep8 -i -r -j0 -a --experimental --max-line-length 100 --indent-size 2 .
 
-test: deps
+test: deps pylint
 	nosetests test

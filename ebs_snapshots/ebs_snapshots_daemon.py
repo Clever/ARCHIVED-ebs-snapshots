@@ -5,6 +5,7 @@ from s3_backup_config import S3BackupConfig
 import snapshot_manager
 from boto import ec2
 import kayvee
+import logging
 
 aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID']
 aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
@@ -24,7 +25,7 @@ def create_snapshots(backup_conf):
     ec2_connection = ec2.connect_to_region(
         aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
     for volume, params in backup_conf.get().iteritems():
-        print kayvee.formatLog("ebs-snapshots", "info", "about to take ebs snapshot {} - {}".format(volume, params))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "about to take ebs snapshot {} - {}".format(volume, params)))
         interval = params.get('interval', 'daily')
         max_snapshots = params.get('max_snapshots', 0)
         name = params.get('name', '')
