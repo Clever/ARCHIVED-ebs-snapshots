@@ -14,7 +14,7 @@ deps:
 
 # Check for errors in Python files
 pylint: deps
-	find . | grep .py | grep -v .pyc | xargs pylint -E
+	find . | grep .py$$ | xargs pylint -E
 
 lint: deps
 	pep8 --config ./pep8 . || true
