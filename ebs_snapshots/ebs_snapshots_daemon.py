@@ -2,6 +2,7 @@ import time
 import os
 from file_backup_config import FileBackupConfig
 from s3_backup_config import S3BackupConfig
+from inline_backup_config import InlineBackupConfig
 import snapshot_manager
 from boto import ec2
 import kayvee
@@ -17,6 +18,9 @@ def get_backup_conf(path):
     """ Gets backup config from file or S3 """
     if path.startswith("s3://"):
         return S3BackupConfig(path, aws_access_key_id, aws_secret_access_key)
+    elif ":" in path:
+        # config is YAML or JSON
+        return InlineBackupConfig(path)
     else:
         return FileBackupConfig(path)
 

@@ -22,5 +22,8 @@ lint: deps
 format: deps
 	autopep8 -i -r -j0 -a --experimental --max-line-length 100 --indent-size 2 .
 
-test: deps pylint
+# nose test-runner
+nose:
 	nosetests test
+
+test: deps pylint nose
