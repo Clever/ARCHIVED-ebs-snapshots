@@ -17,9 +17,9 @@ schema = {
 class BackupConfig:
 
     """
-    Interface shared by backup configs  
+    Interface shared by backup configs
 
-    Config items are dicts, with key equal to the volume id mapped to a dict of 
+    Config items are dicts, with key equal to the volume id mapped to a dict of
     parameters
 
     {
@@ -54,4 +54,5 @@ class BackupConfig:
         return self.config
 
     def refresh(self):
+      """ returns config dict, after being updated """
       raise NotImplementedError("refresh() must be implemented in subclasses")

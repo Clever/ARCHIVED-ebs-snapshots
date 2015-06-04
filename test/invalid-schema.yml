@@ -1,0 +1,5 @@
+# Valid YAML, but doesn't match JSON schema for backup configs
+my-dict:
+    some-key: some-val
+another:
+    wrong-key: 2

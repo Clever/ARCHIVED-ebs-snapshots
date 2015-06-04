@@ -8,13 +8,15 @@
 
 ```
 AWS_ACCESS_KEY=your_key \
-AWS_SECRET_KEY=your_secret \ 
-AWS_REGION=your_region \ 
-CONFIG_PATH=s3://your-bucket/snapshots-config.yml \ 
-python main.py 
+AWS_SECRET_KEY=your_secret \
+AWS_REGION=your_region \
+BACKUP_CONFIG=s3://your-bucket/snapshots-config.yml \
+python main.py
 ```
 
-This starts a long-running process that will take snapshots according to the config file. 
+This starts a long-running process that will take snapshots according to the config file.
+
+`BACKUP_CONFIG` may be a local file, an s3 path, or inline YAML/JSON.
 
 ### Configuration
 
@@ -25,16 +27,16 @@ Top level keys are volume ids. These map to a dict of parameters:
 - `max_snapshots` - max snapshots to keep, 0 keeps all
 - `name` - name of snapshot, written to EC2 tag 'Name"
 
-Here is an example configuration file to automate snapshots for two volumes: 
+Here is an example configuration file to automate snapshots for two volumes:
 
 ```yaml
 vol-fake1234:
-  interval: daily  
+  interval: daily
   max_snapshots: 0
   name: Fake database
 vol-fake5678:
-  interval: hourly 
-  max_snapshots: 48 
+  interval: hourly
+  max_snapshots: 48
 ```
 
 ### Required Env
