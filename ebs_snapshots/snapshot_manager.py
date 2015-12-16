@@ -49,7 +49,7 @@ def _create_snapshot(connection, volume, name=''):
     if not name:
         name = '{}-snapshot'.format(volume.id)
     connection.create_tags(
-        [snapshot.id], dict(Name=name, Creator='ebs-snapshots'))
+        [snapshot.id], dict(Name=name, creator='ebs-snapshots'))
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "created snapshot successfully", {
         "name": name,
         "volume": volume.id,
