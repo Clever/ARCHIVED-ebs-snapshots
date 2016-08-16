@@ -7,8 +7,8 @@
 ## Usage
 
 ```
-AWS_ACCESS_KEY=your_key \
-AWS_SECRET_KEY=your_secret \
+AWS_ACCESS_KEY_ID=your_key \
+AWS_SECRET_ACCESS_KEY=your_secret \
 AWS_REGION=your_region \
 BACKUP_CONFIG=s3://your-bucket/snapshots-config.yml \
 python main.py
@@ -44,10 +44,10 @@ vol-fake5678:
 You must specify these env vars in order to connect to AWS and to choose the configuration file.
 
 ```
-AWS_ACCESS_KEY  # Your AWS Credentials
-AWS_SECRET_KEY  # Your AWS Credentials
-AWS_REGION      # AWS Region, e.g. us-west-1
-CONFIG_PATH     # Path to backup config. May be local file or s3 path (see "Configuration")
+AWS_ACCESS_KEY_ID      # Your AWS Credentials
+AWS_SECRET_ACCESS_KEY  # Your AWS Credentials
+AWS_REGION             # AWS Region, e.g. us-west-1
+BACKUP_CONFIG          # Path to backup config. May be local file or s3 path (see "Configuration")
 ```
 
 ### AWS Policy
@@ -71,7 +71,7 @@ Run as a docker container, making sure to specify required env vars:
 
 ```
 docker run \
--e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+-e AWS_ACCESS_KEY_ID_ID=$AWS_ACCESS_KEY_ID_ID \
 -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
 -e AWS_REGION=$AWS_REGION \
 -e BACKUP_CONFIG=$BACKUP_CONFIG \
