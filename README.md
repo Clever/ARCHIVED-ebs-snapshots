@@ -47,7 +47,7 @@ You must specify these env vars in order to connect to AWS and to choose the con
 AWS_ACCESS_KEY  # Your AWS Credentials
 AWS_SECRET_KEY  # Your AWS Credentials
 AWS_REGION      # AWS Region, e.g. us-west-1
-CONFIG_PATH     # Path to backup config. May be local file or s3 path (see "Configuration")
+BACKUP_CONFIG   # Path to backup config. May be local file or s3 path (see "Configuration")
 ```
 
 ### AWS Policy
