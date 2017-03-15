@@ -94,7 +94,7 @@ def _ensure_snapshot(connection, volume, interval, name):
 
     logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old'.format(volume.id, min_delta)))
 
-    if interval == 'hourly' and min_delta > 1200:
+    if interval == 'hourly' and min_delta > 3600:
         _create_snapshot(connection, volume, name)
     elif interval == 'daily' and min_delta > 3600*24:
         _create_snapshot(connection, volume, name)
