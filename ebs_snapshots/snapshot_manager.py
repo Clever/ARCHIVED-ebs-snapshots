@@ -35,7 +35,7 @@ def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
                 "channel": "#oncall-infra",
                 "icon": ":camera_with_flash:",
                 "user": "ebs-snapshots",
-                "message": "Error: " + str(error.message),
+                "message": "ERROR: " + str(error.message),
             }
         }))
         return
