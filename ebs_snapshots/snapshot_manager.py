@@ -28,7 +28,16 @@ def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
     try:
         volumes = connection.get_all_volumes([volume_id])
     except EC2ResponseError as error:
-        logging.error(kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {"msg": error.message}))
+        logging.error(kayvee.formatLog("ebs-snapshots", "error", "failed to connect to AWS", {
+            "msg": error.message,
+            "_kvmeta": {
+                "type": "notifications",
+                "channel": "#oncall-infra",
+                "icon": ":camera_with_flash:",
+                "user": "ebs-snapshots",
+                "message": "Error: " + str(error.message),
+            }
+        }))
         return
 
     for volume in volumes:
