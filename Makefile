@@ -27,3 +27,6 @@ nose:
 	nosetests test
 
 test: deps pylint nose
+
+run:
+	python ./main.py
