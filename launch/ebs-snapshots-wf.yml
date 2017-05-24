@@ -1,0 +1,12 @@
+run:
+  type: workflow
+env:
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
+- AWS_REGION
+- BACKUP_CONFIG
+resources:
+  cpu: 0.05
+  max_mem: 0.02
+team: eng-infra
+use_iam_roles: true

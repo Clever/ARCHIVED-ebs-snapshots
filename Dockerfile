@@ -1,17 +1,21 @@
 # Automated EBS Snapshots
-FROM alpine:3.4
+FROM python:2.7
 
+# Certificates needed for https requests, to avoid
+# "x509: failed to load system roots and no roots provided" error
+RUN apt-get update -y && \
+    apt-get install -y ca-certificates curl && \
+    curl -L https://github.com/Clever/batchcli/releases/download/0.0.12/batchcli-v0.0.12-linux-amd64.tar.gz | tar xz -C /usr/local/bin --strip-components 1 && \
+    apt-get -y remove curl && \
+    apt-get -y autoremove
+
+# Install Python deps
 ADD requirements.txt ./
-
-# Install python deps
-RUN apk --update add python py-pip ca-certificates \
-  && \
-  pip install -r requirements.txt \
-  && \
-  rm -rf /tmp/* /var/tmp/* /var/cache/apk/*
+RUN pip install -r requirements.txt && \
+    rm -rf /tmp/* /var/tmp/*
 
 # Add application files
 ADD . ./
 
 # Run
-CMD ["/usr/bin/python", "/main.py"]
+CMD ["batchcli", "--cmd", "/usr/bin/python", "/main.py"]
