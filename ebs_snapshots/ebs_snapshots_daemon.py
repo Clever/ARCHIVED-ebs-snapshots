@@ -37,12 +37,13 @@ def create_snapshots(backup_conf):
             ec2_connection, volume, interval, max_snapshots, name)
 
 
-def snapshot_timer(interval=300):
-    """ Gets backup conf, every x seconds checks for snapshots to create/delete,
-        and performs the create/delete operations as needed """
-    # Main loop gets the backup conf once.
-    # Thereafter they are responsible for updating their own data
+def run_once():
     backup_conf = get_backup_conf(config_path)
+    create_snapshots(backup_conf)
+
+
+def snapshot_timer(interval=300):
+    """ Every x seconds: gets backup conf, checks for snapshots to create/delete,
+        and performs the create/delete operations as needed """
     while True:
-        create_snapshots(backup_conf)
-        time.sleep(interval)
+        run_once()
