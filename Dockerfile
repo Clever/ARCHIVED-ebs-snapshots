@@ -18,4 +18,4 @@ RUN pip install -r requirements.txt && \
 ADD . ./
 
 # Run
-CMD ["batchcli", "--cmd", "/usr/bin/python", "/main.py"]
+CMD ["batchcli", "--cmd", "python", "/main.py"]
