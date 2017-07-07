@@ -6,6 +6,6 @@ env:
 - AWS_REGION
 - BACKUP_CONFIG
 resources:
-  cpu: 0.05
+  cpu: 0.0  # no CPU to improve resource usage (https://clever.atlassian.net/browse/INFRA-2120)
   max_mem: 0.02
 team: eng-infra
