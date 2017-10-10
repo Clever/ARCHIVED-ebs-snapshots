@@ -11,11 +11,16 @@ if __name__ == "__main__":
         logging.error(kayvee.formatLog("ebs-snapshots", "error", "unknown exception", {
             "error": str(e),
             "_kvmeta": {
-                "type": "notifications",
-                "channel": "#oncall-infra",
-                "icon": ":camera_with_flash:",
-                "user": "ebs-snapshots",
-                "message": "ERROR: " + str(e),
+                "team": "eng-infra",
+                "kv_version": "2.0.2",
+                "kv_language": "python",
+                "routes": [ {
+                    "type": "notifications",
+                    "channel": "#oncall-infra",
+                    "icon": ":camera_with_flash:",
+                    "user": "ebs-snapshots",
+                    "message": "ERROR: " + str(e),
+                } ]
             }
         }))
         sys.exit(1)
