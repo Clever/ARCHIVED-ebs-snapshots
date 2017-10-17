@@ -4,10 +4,6 @@ import yaml
 import boto
 from moto import mock_s3
 
-access_key = "fake"
-secret_key = "fake"
-
-
 class TestS3BackupConfig(unittest.TestCase):
 
     @mock_s3
@@ -15,7 +11,7 @@ class TestS3BackupConfig(unittest.TestCase):
         # if key doesn't exist, initialization should still succeed in case key
         # is written after daemon is started
         b = S3BackupConfig(
-            "s3://fake-bucket/fake-backup-conf.yml", access_key, secret_key)
+            "s3://fake-bucket/fake-backup-conf.yml")
 
     @mock_s3
     def test_refresh_errors_when_key_does_not_exist(self):
@@ -24,7 +20,7 @@ class TestS3BackupConfig(unittest.TestCase):
         k = boto.s3.key.Key(bucket)
 
         b = S3BackupConfig(
-            "s3://fake-bucket/does-not-exist.yml", access_key, secret_key)
+            "s3://fake-bucket/does-not-exist.yml")
         with self.assertRaises(boto.exception.S3ResponseError):
             b.refresh()
 
@@ -37,11 +33,11 @@ class TestS3BackupConfig(unittest.TestCase):
         k.set_contents_from_filename("test/not-valid-yaml.yml")
 
         b = S3BackupConfig(
-            "s3://fake-bucket/not-valid-yaml.yml", access_key, secret_key)
+            "s3://fake-bucket/not-valid-yaml.yml")
         with self.assertRaises(yaml.scanner.ScannerError):
             b.refresh()
         b = S3BackupConfig(
-            "s3://fake-bucket/not-valid-yaml.yml", access_key, secret_key)
+            "s3://fake-bucket/not-valid-yaml.yml")
 
     @mock_s3
     def test_get_data(self):
@@ -52,7 +48,7 @@ class TestS3BackupConfig(unittest.TestCase):
         k.set_contents_from_filename("test/example-volumes.yml")
 
         b = S3BackupConfig(
-            "s3://fake-bucket/example-volumes.yml", access_key, secret_key)
+            "s3://fake-bucket/example-volumes.yml")
         data = b.get()
         self.assertEqual(len(data), 3)
         self.assertEquals(

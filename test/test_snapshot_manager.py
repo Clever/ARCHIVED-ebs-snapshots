@@ -8,7 +8,7 @@ class TestSnapshotManager(unittest.TestCase):
 
     @mock_ec2
     def test_ignore_attached_volumes(self):
-        conn = boto.connect_ec2('the_key', 'the_secret')
+        conn = boto.connect_ec2()
 
         # create a volumes
         volume = conn.create_volume(50, 'us-west-1a')

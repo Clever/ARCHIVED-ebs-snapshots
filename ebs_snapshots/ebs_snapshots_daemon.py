@@ -8,8 +8,6 @@ from boto import ec2
 import kayvee
 import logging
 
-aws_access_key_id = os.environ['AWS_ACCESS_KEY_ID']
-aws_secret_access_key = os.environ['AWS_SECRET_ACCESS_KEY']
 aws_region = os.environ['AWS_REGION']
 config_path = os.environ['BACKUP_CONFIG']
 
@@ -17,7 +15,7 @@ config_path = os.environ['BACKUP_CONFIG']
 def get_backup_conf(path):
     """ Gets backup config from file or S3 """
     if path.startswith("s3://"):
-        return S3BackupConfig(path, aws_access_key_id, aws_secret_access_key)
+        return S3BackupConfig(path)
     elif ":" in path:
         # config is YAML or JSON
         return InlineBackupConfig(path)
@@ -26,8 +24,7 @@ def get_backup_conf(path):
 
 
 def create_snapshots(backup_conf):
-    ec2_connection = ec2.connect_to_region(
-        aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+    ec2_connection = ec2.connect_to_region(aws_region)
     for volume, params in backup_conf.get().iteritems():
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "about to take ebs snapshot {} - {}".format(volume, params)))
         interval = params.get('interval', 'daily')
