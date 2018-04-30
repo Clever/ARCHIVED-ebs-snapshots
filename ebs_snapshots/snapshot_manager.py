@@ -14,11 +14,13 @@ VALID_INTERVALS = [
     u'yearly']
 
 
-def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
+def run(connection, backup_connection, volume_id, interval='daily', max_snapshots=0, name=''):
     """ Ensure that we have snapshots for a given volume
 
     :type connection: boto.ec2.connection.EC2Connection
-    :param connection: EC2 connection object
+    :param connection: EC2 connection object for primary EBS region
+    :type backup_connection: boto.ec2.connection.EC2Connection
+    :param backup_connection: EC2 connection object for backup region
     :type volume_id: str
     :param volume_id: identifier for boto.ec2.volume.Volume
     :type max_snapshots: int
@@ -46,7 +48,7 @@ def run(connection, volume_id, interval='daily', max_snapshots=0, name=''):
         return
 
     for volume in volumes:
-        _ensure_snapshot(connection, volume, interval, name)
+        _ensure_snapshot(connection, backup_connection, volume, interval, name)
         _remove_old_snapshots(connection, volume, max_snapshots)
 
 
@@ -72,7 +74,35 @@ def _create_snapshot(connection, volume, name=''):
     return snapshot
 
 
-def _ensure_snapshot(connection, volume, interval, name):
+def _copy_snapshot(backup_connection, volume, snapshot_id, name):
+    """ Copy a snapshot to another region
+
+    :type backup_connection: boto.ec2.connection.EC2Connection
+    :param backup_connection: EC2 connection object for backup region
+    :type volume: boto.ec2.volume.Volume
+    :param volume: Volume that snapshot is of
+    :type snapshot_id: str
+    :param snapshot_id: identifier for boto.ec2.snapshot.Snapshot (the snapshot to copy)
+    :returns: str -- the id of the copy
+    """
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "copying snapshot", {"volume": volume.id}))
+    region = volume.zone.region_name
+    snapshot_copy_id = backup_connection.copy_snapshot(
+        source_region=region,
+        source_snapshot_id=snapshot_id,
+        description='copy of {}'.format(snapshot_id))
+    backup_connection.create_tags(
+        [snapshot_copy_id], dict(Name=name, creator='ebs-snapshots', snapshot_source=snapshot_id))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "copied snapshot successfully", {
+        "name": name,
+        "volume": volume.id,
+        "snapshot_source": snapshot.id,
+        "snapshot_copy": snapshot_copy_id
+    }))
+
+    return snapshot_copy_id
+
+def _ensure_snapshot(connection, backup_connection, volume, interval, name):
     """ Ensure that a given volume has an appropriate snapshot
 
     :type connection: boto.ec2.connection.EC2Connection
@@ -92,7 +122,8 @@ def _ensure_snapshot(connection, volume, interval, name):
 
     # Create a snapshot if we don't have any
     if not snapshots:
-        _create_snapshot(connection, volume, name)
+        new_snapshot = _create_snapshot(connection, volume, name)
+        _copy_snapshot(backup_connection, volume, new_snapshot.id, name)
         return
 
     min_delta = 3600 * 24 * 365 * 10  # 10 years :)
@@ -109,15 +140,20 @@ def _ensure_snapshot(connection, volume, interval, name):
     logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old'.format(volume.id, min_delta)))
 
     if interval == 'hourly' and min_delta > 3600:
-        _create_snapshot(connection, volume, name)
+        new_snapshot = _create_snapshot(connection, volume, name)
+        _copy_snapshot(backup_connection, volume, new_snapshot.id, name)
     elif interval == 'daily' and min_delta > 3600*24:
-        _create_snapshot(connection, volume, name)
+        new_snapshot = _create_snapshot(connection, volume, name)
+        _copy_snapshot(backup_connection, volume, new_snapshot.id, name)
     elif interval == 'weekly' and min_delta > 3600*24*7:
-        _create_snapshot(connection, volume, name)
+        new_snapshot = _create_snapshot(connection, volume, name)
+        _copy_snapshot(backup_connection, volume, new_snapshot.id, name)
     elif interval == 'monthly' and min_delta > 3600*24*30:
-        _create_snapshot(connection, volume, name)
+        new_snapshot = _create_snapshot(connection, volume, name)
+        _copy_snapshot(backup_connection, volume, new_snapshot.id, name)
     elif interval == 'yearly' and min_delta > 3600*24*365:
-        _create_snapshot(connection, volume, name)
+        new_snapshot = _create_snapshot(connection, volume, name)
+        _copy_snapshot(backup_connection, volume, new_snapshot.id, name)
     else:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id}))
 
