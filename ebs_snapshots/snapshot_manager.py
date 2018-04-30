@@ -50,6 +50,7 @@ def run(connection, backup_connection, volume_id, interval='daily', max_snapshot
     for volume in volumes:
         _ensure_snapshot(connection, backup_connection, volume, interval, name)
         _remove_old_snapshots(connection, volume, max_snapshots)
+        _remove_old_snapshots(backup_connection, volume, max_snapshots)
 
 
 def _create_snapshot(connection, volume, name=''):
