@@ -10,6 +10,7 @@
 AWS_ACCESS_KEY_ID=your_key \
 AWS_SECRET_ACCESS_KEY=your_secret \
 AWS_REGION=your_region \
+AWS_BACKUP_REGION=your_backup_region \
 BACKUP_CONFIG=s3://your-bucket/snapshots-config.yml \
 python main.py
 ```
