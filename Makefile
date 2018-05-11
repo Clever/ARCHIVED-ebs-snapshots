@@ -28,5 +28,21 @@ nose:
 
 test: deps pylint nose
 
-run:
+run: docker_run
+
+local_run:
 	python ./main.py
+
+docker_build:
+	docker build -t ebs-snapshots-local .
+
+docker_run: docker_build
+	@echo "HERE"
+	@echo "THERE"
+	@docker run \
+	-v /tmp:/tmp \
+	-e AWS_ACCESS_KEY_ID=$$AWS_ACCESS_KEY_ID \
+	-e AWS_SECRET_ACCESS_KEY=$$AWS_SECRET_ACCESS_KEY \
+	-e AWS_REGION=$$AWS_REGION \
+	-e BACKUP_CONFIG=$$BACKUP_CONFIG \
+	ebs-snapshots-local
