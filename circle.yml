@@ -5,6 +5,7 @@ machine:
   - docker
 dependencies:
   override:
+  - pip install --force-reinstall pip==9.0.3
   - make deps
 test:
   override:
