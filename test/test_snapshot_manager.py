@@ -20,4 +20,4 @@ class TestSnapshotManager(unittest.TestCase):
         # run function for volume
         snapshot_manager.run(conn, volume.id, 'daily', 0, '')
         self.assertEqual(1, snapshot_manager._ensure_snapshot.call_count)
-        self.assertEqual(1, snapshot_manager._remove_old_snapshots.call_count)
+        self.assertEqual(2, snapshot_manager._remove_old_snapshots.call_count)
