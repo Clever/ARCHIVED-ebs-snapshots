@@ -1,6 +1,7 @@
 """ Module handling the snapshots """
 import datetime
 import yaml
+import boto3
 from boto.exception import EC2ResponseError
 import kayvee
 import logging
@@ -14,13 +15,13 @@ VALID_INTERVALS = [
     u'yearly']
 
 
-def run(connection, backup_connection, volume_id, interval='daily', max_snapshots=0, name=''):
+def run(connection, backup_client, volume_id, interval='daily', max_snapshots=0, name=''):
     """ Ensure that we have snapshots for a given volume
 
     :type connection: boto.ec2.connection.EC2Connection
     :param connection: EC2 connection object for primary EBS region
-    :type backup_connection: boto.ec2.connection.EC2Connection
-    :param backup_connection: EC2 connection object for backup region
+    :type backup_client: boto3.EC2.Client
+    :param backup_client: EC2 client for backup region
     :type volume_id: str
     :param volume_id: identifier for boto.ec2.volume.Volume
     :type max_snapshots: int
@@ -48,9 +49,9 @@ def run(connection, backup_connection, volume_id, interval='daily', max_snapshot
         return
 
     for volume in volumes:
-        _ensure_snapshot(connection, backup_connection, volume, interval, name)
+        _ensure_snapshot(connection, backup_client, volume, interval, name)
         _remove_old_snapshots(connection, volume, max_snapshots)
-        _remove_old_snapshots(backup_connection, volume, max_snapshots)
+        _remove_old_snapshot_backups(backup_client, volume.id, max_snapshots)
 
 def _create_snapshot(connection, volume, name=''):
     """ Create a new snapshot
@@ -78,15 +79,15 @@ def _availability_zone_to_region_name(zone):
 
     :type zone: str
     :param zone: name of availability zone
-    @TODO: tests
+    :returns  str -- the name of the region
     """
     return zone[:-1]
 
-def _copy_snapshot(backup_connection, volume, snapshot_id, name):
+def _copy_snapshot(backup_client, volume, snapshot_id, name):
     """ Copy a snapshot to another region
 
-    :type backup_connection: boto.ec2.connection.EC2Connection
-    :param backup_connection: EC2 connection object for backup region
+    :type backup_client: boto3.EC2.Client
+    :param backup_client: EC2 client for backup region
     :type volume: boto.ec2.volume.Volume
     :param volume: Volume that snapshot is of
     :type snapshot_id: str
@@ -95,23 +96,31 @@ def _copy_snapshot(backup_connection, volume, snapshot_id, name):
     """
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "copying snapshot", {"volume": volume.id}))
     region = _availability_zone_to_region_name(volume.zone)
-    snapshot_copy_id = backup_connection.copy_snapshot(
-        source_region=region,
-        source_snapshot_id=snapshot_id,
-        description='copy of {}'.format(snapshot_id))#,
-        #dry_run=True)
-    backup_connection.create_tags(
-        [snapshot_copy_id], {"Name":name, "creator":"ebs-snapshots", "snapshot_source":snapshot_id, "volume-id":volume.id})
+    response = backup_client.copy_snapshot(
+        SourceRegion=region,
+        SourceSnapshotId=snapshot_id,
+        Encrypted=True,
+        Description='copy of {}'.format(snapshot_id))#,
+        # DryRun=True)
+    backup_client.create_tags(
+        Resources=[response["SnapshotId"]],
+        Tags=[
+            {"Key":"Name", 'Value':name},
+            {"Key":"creator", 'Value':"ebs-snapshots"},
+            {"Key":"snapshot_source", 'Value':snapshot_id},
+            {"Key":"volume-id", 'Value':volume.id}
+        ]
+    )
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "copied snapshot successfully", {
         "name": name,
         "volume": volume.id,
         "snapshot_source": snapshot_id,
-        "snapshot_copy": snapshot_copy_id
+        "snapshot_copy": response["SnapshotId"]
     }))
 
-    return snapshot_copy_id
+    return response["SnapshotId"]
 
-def _ensure_snapshot(connection, backup_connection, volume, interval, name):
+def _ensure_snapshot(connection, backup_client, volume, interval, name):
     """ Ensure that a given volume has an appropriate snapshot
 
     :type connection: boto.ec2.connection.EC2Connection
@@ -133,6 +142,8 @@ def _ensure_snapshot(connection, backup_connection, volume, interval, name):
     if not snapshots:
         _create_snapshot(connection, volume, name)
         return
+
+    #@TODO: create backup if we don't have any (ensure_backups?)
 
     min_delta = 3600 * 24 * 365 * 10  # 10 years :)
 
@@ -174,18 +185,66 @@ def _ensure_snapshot(connection, backup_connection, volume, interval, name):
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id}))
 
     # Copy most recent completed snapshot if latest completed is older than interval.
-    if interval == 'hourly' and min_complete_snapshot_delta > 0:
-        _copy_snapshot(connection, volume, latest_complete_snapshot_id, name)
+    if interval == 'hourly' and min_complete_snapshot_delta > 3600:
+        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'daily' and min_complete_snapshot_delta > 3600*24:
-        _copy_snapshot(connection, volume, latest_complete_snapshot_id, name)
+        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'weekly' and min_complete_snapshot_delta > 3600*24*7:
-        _copy_snapshot(connection, volume, latest_complete_snapshot_id, name)
+        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'monthly' and min_complete_snapshot_delta > 3600*24*30:
-        _copy_snapshot(connection, volume, latest_complete_snapshot_id, name)
+        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'yearly' and min_complete_snapshot_delta > 3600*24*365:
-        _copy_snapshot(connection, volume, latest_complete_snapshot_id, name)
+        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     else:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
+
+def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
+    """ Remove old snapshot backups
+
+    :type client: boto3.EC2.Client
+    :param client: EC2 client object
+    :type volume_id: str
+    :param volume_id: ID of olume to check
+    :returns: None
+    """
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshot backups", data={"volume":volume_id}))
+    retention = max_snapshots
+    if not type(retention) is int and retention >= 0:
+        logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "invalid max_snapshots value", {
+            "volume": volume_id,
+            "max_snapshots": retention
+        }))
+        return
+
+    response = client.describe_snapshots(
+        Filters=[{ "Name": "tag:volume-id", "Values":[volume_id] }]
+    )
+    snapshots = response["Snapshots"]
+
+
+    # Sort the list based on the start time
+    snapshots.sort(key=lambda x: x["StartTime"])
+
+    # Remove snapshots we want to keep
+    snapshots = snapshots[:-int(retention)]
+
+    # if not snapshots:
+    #     logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old backup snapshots to remove", data={}))
+    #     return
+
+    ec2 = boto3.resource('ec2')
+    for snapshotInfo in snapshots:
+        snapshot = ec2.Snapshot(snapshotInfo["SnapshotId"])
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "deleting snapshot", {"snapshot": snapshot.id}))
+        try:
+            snapshot.delete()
+        except EC2ResponseError as error:
+            logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "could not remove snapshot", {
+                "snapshot": snapshot.id,
+                "msg": error.message
+            }))
+
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshot backups", data={}))
 
 
 def _remove_old_snapshots(connection, volume, max_snapshots):
