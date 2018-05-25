@@ -204,7 +204,7 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     :type client: boto3.EC2.Client
     :param client: EC2 client object
     :type volume_id: str
-    :param volume_id: ID of olume to check
+    :param volume_id: ID of volume to check
     :returns: None
     """
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshot backups", data={"volume":volume_id}))
