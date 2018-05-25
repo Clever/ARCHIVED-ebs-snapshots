@@ -125,8 +125,12 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
 
     :type connection: boto.ec2.connection.EC2Connection
     :param connection: EC2 connection object
+    :type backup_client: boto3.EC2.Client
+    :param backup_client: EC2 client for backup region
     :type volume: boto.ec2.volume.Volume
     :param volume: Volume to check
+    :type name: str
+    :param name: a name to tag the snapshot(s) with
     :returns: None
     """
     if interval not in VALID_INTERVALS:
@@ -143,15 +147,14 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
         _create_snapshot(connection, volume, name)
         return
 
-    #@TODO: create backup if we don't have any (ensure_backups?)
-
+    latest_snapshot_id = None
     min_delta = 3600 * 24 * 365 * 10  # 10 years :)
 
     latest_complete_snapshot_id = None
     min_complete_snapshot_delta = 3600 * 24 * 365 * 10
 
     for snapshot in snapshots:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", 'snapshot', data={"snapshot": snapshot.status}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "@TODO @DEBUG - processing snapshot", data={"snapshot_id": snapshot.id, "status": snapshot.status}))
         # Determine time since latest snapshot.
         timestamp = datetime.datetime.strptime(
             snapshot.start_time,
@@ -160,6 +163,7 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
             (datetime.datetime.utcnow() - timestamp).total_seconds())
 
         if delta_seconds < min_delta:
+            latest_snapshot_id = snapshot.id
             min_delta = delta_seconds
 
         # Determine latest completed snapshot's id.
@@ -167,7 +171,7 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
             latest_complete_snapshot_id = snapshot.id
             min_complete_snapshot_delta = delta_seconds
 
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old'.format(volume.id, min_delta), data={}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_delta, latest_snapshot_id), data={}))
     logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest completed snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_complete_snapshot_delta, latest_complete_snapshot_id), data={}))
 
     # Create snapshot if latest is older than interval.
@@ -182,21 +186,36 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
     elif interval == 'yearly' and min_delta > 3600*24*365:
         _create_snapshot(connection, volume, name)
     else:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id, "lastest_snapshot_id": latest_snapshot_id}))
 
-    # Copy most recent completed snapshot if latest completed is older than interval.
-    if interval == 'hourly' and min_complete_snapshot_delta > 3600:
-        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
+    # Make a backup copy of latest completed snapshot if there is one completed.
+    backup_id = None
+    if latest_complete_snapshot_id is None:
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "waiting to create backup snapshot until snapshot is complete", {"volume": volume.id}))
+    elif interval == 'hourly' and min_complete_snapshot_delta > 3600:
+        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'daily' and min_complete_snapshot_delta > 3600*24:
-        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
+        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'weekly' and min_complete_snapshot_delta > 3600*24*7:
-        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
+        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'monthly' and min_complete_snapshot_delta > 3600*24*30:
-        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
+        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'yearly' and min_complete_snapshot_delta > 3600*24*365:
+        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
+    elif (backup_id is None) and (not _has_backup(backup_client, volume)):
+        # if there is no backup already and none being created, create one (without waiting for interval to elapse)
         _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     else:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
+       logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
+
+def _has_backup(client, volume):
+    backup_snapshots = client.describe_snapshots(Filters=[
+        {
+            'Name': "tag:volume-id",
+            'Values': [volume.id]
+        }
+    ])
+    return len(backup_snapshots['Snapshots']) > 0
 
 def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     """ Remove old snapshot backups
@@ -207,7 +226,8 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     :param volume_id: ID of volume to check
     :returns: None
     """
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshot backups", data={"volume":volume_id}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshots", data={"volume":volume}))
+
     retention = max_snapshots
     if not type(retention) is int and retention >= 0:
         logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "invalid max_snapshots value", {
@@ -228,9 +248,9 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     # Remove snapshots we want to keep
     snapshots = snapshots[:-int(retention)]
 
-    # if not snapshots:
-    #     logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old backup snapshots to remove", data={}))
-    #     return
+    if not snapshots:
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old backup snapshots to remove", data={}))
+        return
 
     ec2 = boto3.resource('ec2')
     for snapshotInfo in snapshots:
