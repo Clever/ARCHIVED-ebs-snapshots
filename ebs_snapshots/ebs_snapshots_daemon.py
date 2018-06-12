@@ -29,7 +29,7 @@ def create_snapshots(backup_conf):
     ec2_connection = ec2.connect_to_region(aws_region)
     ec2_backup_client = boto3.client("ec2", region_name=aws_backup_region)
     for volume, params in backup_conf.get().iteritems():
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "about to take ebs snapshot {} - {}".format(volume, params), data={}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "about to evaluate ebs snapshots for {} - {}".format(volume, params), data={}))
         interval = params.get('interval', 'daily')
         max_snapshots = params.get('max_snapshots', 0)
         name = params.get('name', '')
