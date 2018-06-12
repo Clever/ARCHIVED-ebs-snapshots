@@ -144,6 +144,7 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
 
     # Create a snapshot if we don't have any
     if not snapshots:
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshots found", {"volume": volume.id}))
         _create_snapshot(connection, volume, name)
         return
 
@@ -154,7 +155,6 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
     min_complete_snapshot_delta = 3600 * 24 * 365 * 10
 
     for snapshot in snapshots:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "@TODO @DEBUG - processing snapshot", data={"snapshot_id": snapshot.id, "status": snapshot.status}))
         # Determine time since latest snapshot.
         timestamp = datetime.datetime.strptime(
             snapshot.start_time,
@@ -171,8 +171,8 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
             latest_complete_snapshot_id = snapshot.id
             min_complete_snapshot_delta = delta_seconds
 
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_delta, latest_snapshot_id), data={}))
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest completed snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_complete_snapshot_delta, latest_complete_snapshot_id), data={}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_delta, latest_snapshot_id), data={"volume":volume.id}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest completed snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_complete_snapshot_delta, latest_complete_snapshot_id), data={"volume":volume.id}))
 
     # Create snapshot if latest is older than interval.
     if interval == 'hourly' and min_delta > 3600:
@@ -203,10 +203,12 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
     elif interval == 'yearly' and min_complete_snapshot_delta > 3600*24*365:
         backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif (backup_id is None) and (not _has_backup(backup_client, volume)):
-        # if there is no backup already and none being created, create one (without waiting for interval to elapse)
+        # if there is no backup already and none being created on this pass,
+        # create one (without waiting for interval to elapse)
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshots found - copying latest snapshot", {"volume": volume.id, "latest_snapshot": latest_complete_snapshot_id}))
         _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     else:
-       logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
 
 def _has_backup(client, volume):
     backup_snapshots = client.describe_snapshots(Filters=[
@@ -249,22 +251,22 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     snapshots = snapshots[:-int(retention)]
 
     if not snapshots:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old backup snapshots to remove", data={}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old backup snapshots to remove", data={"volume":volume_id}))
         return
 
     ec2 = boto3.resource('ec2')
     for snapshotInfo in snapshots:
         snapshot = ec2.Snapshot(snapshotInfo["SnapshotId"])
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "deleting snapshot", {"snapshot": snapshot.id}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "deleting backup snapshot", {"snapshot": snapshot.id}))
         try:
             snapshot.delete()
         except EC2ResponseError as error:
-            logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "could not remove snapshot", {
+            logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "could not remove backup snapshot", {
                 "snapshot": snapshot.id,
                 "msg": error.message
             }))
 
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshot backups", data={}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshot backups", data={"volume":volume_id}))
 
 
 def _remove_old_snapshots(connection, volume, max_snapshots):
@@ -294,7 +296,7 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
     snapshots = snapshots[:-int(retention)]
 
     if not snapshots:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old snapshots to remove", data={}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old snapshots to remove", data={"volume":volume.id}))
         return
 
     for snapshot in snapshots:
@@ -307,4 +309,4 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
                 "msg": error.message
             }))
 
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshots", data={}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshots", data={"volume":volume.id}))
