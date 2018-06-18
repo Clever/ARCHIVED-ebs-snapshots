@@ -94,7 +94,7 @@ def _copy_snapshot(backup_client, volume, snapshot_id, name):
     :param snapshot_id: identifier for boto.ec2.snapshot.Snapshot (the snapshot to copy)
     :returns: str -- the id of the copy
     """
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", "copying snapshot", {"volume": volume.id}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "copying snapshot", {"volume": volume.id, "source_snapshot": snapshot_id}))
     region = _availability_zone_to_region_name(volume.zone)
     response = backup_client.copy_snapshot(
         SourceRegion=region,
@@ -175,37 +175,27 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
     logging.info(kayvee.formatLog("ebs-snapshots", "info", 'The newest completed snapshot for {} is {} seconds old (snapshot {})'.format(volume.id, min_complete_snapshot_delta, latest_complete_snapshot_id), data={"volume":volume.id}))
 
     # Create snapshot if latest is older than interval.
-    if interval == 'hourly' and min_delta > 3600:
-        _create_snapshot(connection, volume, name)
-    elif interval == 'daily' and min_delta > 3600*24:
-        _create_snapshot(connection, volume, name)
-    elif interval == 'weekly' and min_delta > 3600*24*7:
-        _create_snapshot(connection, volume, name)
-    elif interval == 'monthly' and min_delta > 3600*24*30:
-        _create_snapshot(connection, volume, name)
-    elif interval == 'yearly' and min_delta > 3600*24*365:
+    intervalToSeconds = {
+        u'hourly': 3600,
+        u'daily': 3600*24,
+        u'weekly': 3600*24*7,
+        u'monthly': 3600*24*30,
+        u'yearly': 3600*24*365,
+    }
+    if min_delta > intervalToSeconds[interval]:
         _create_snapshot(connection, volume, name)
     else:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id, "lastest_snapshot_id": latest_snapshot_id}))
 
-    # Make a backup copy of latest completed snapshot if there is one completed and interval has elapsed.
-    backup_id = None
+    # Make a backup copy of latest completed snapshot if there is one completed and latest is older than interval.
     if latest_complete_snapshot_id is None:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "waiting to create backup snapshot until snapshot is complete", {"volume": volume.id}))
-    elif interval == 'hourly' and min_complete_snapshot_delta > 3600:
-        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    elif interval == 'daily' and min_complete_snapshot_delta > 3600*24:
-        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    elif interval == 'weekly' and min_complete_snapshot_delta > 3600*24*7:
-        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    elif interval == 'monthly' and min_complete_snapshot_delta > 3600*24*30:
-        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    elif interval == 'yearly' and min_complete_snapshot_delta > 3600*24*365:
-        backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
+    elif min_complete_snapshot_delta > intervalToSeconds[interval]:
+        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif not _has_backup(backup_client, volume):
-        # if there is no backup already and none being created on this pass (due to interval),
-        # create one (without waiting for interval to elapse)
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshots found - copying latest snapshot", {"volume": volume.id, "latest_snapshot": latest_complete_snapshot_id}))
+        # If the interval has not elapsed but there is a completed snapshot
+        # AND we don't yet have a backup, create one without waiting for latest to be older than interval.
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshots found - copying latest snapshot", {"volume": volume.id, "source_snapshot": latest_complete_snapshot_id}))
         _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     else:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
