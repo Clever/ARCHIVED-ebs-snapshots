@@ -100,8 +100,8 @@ def _copy_snapshot(backup_client, volume, snapshot_id, name):
         SourceRegion=region,
         SourceSnapshotId=snapshot_id,
         Encrypted=True,
-        Description='copy of {}'.format(snapshot_id))#,
-        # DryRun=True)
+        Description='copy of {}'.format(snapshot_id))
+
     backup_client.create_tags(
         Resources=[response["SnapshotId"]],
         Tags=[
@@ -121,7 +121,7 @@ def _copy_snapshot(backup_client, volume, snapshot_id, name):
     return response["SnapshotId"]
 
 def _ensure_snapshot(connection, backup_client, volume, interval, name):
-    """ Ensure that a given volume has an appropriate snapshot
+    """ Ensure that a given volume has appropriate snapshot(s) and backup snapshot(s)
 
     :type connection: boto.ec2.connection.EC2Connection
     :param connection: EC2 connection object
@@ -144,7 +144,7 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
 
     # Create a snapshot if we don't have any
     if not snapshots:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshots found", {"volume": volume.id}))
+        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshots found - creating snapshot", {"volume": volume.id}))
         _create_snapshot(connection, volume, name)
         return
 
@@ -188,7 +188,7 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
     else:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id, "lastest_snapshot_id": latest_snapshot_id}))
 
-    # Make a backup copy of latest completed snapshot if there is one completed.
+    # Make a backup copy of latest completed snapshot if there is one completed and interval has elapsed.
     backup_id = None
     if latest_complete_snapshot_id is None:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "waiting to create backup snapshot until snapshot is complete", {"volume": volume.id}))
@@ -228,7 +228,7 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     :param volume_id: ID of volume to check
     :returns: None
     """
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshots", data={"volume":volume_id}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old backup snapshots", data={"volume":volume_id}))
 
     retention = max_snapshots
     if not type(retention) is int and retention >= 0:
@@ -267,7 +267,6 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
             }))
 
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshot backups", data={"volume":volume_id}))
-
 
 def _remove_old_snapshots(connection, volume, max_snapshots):
     """ Remove old snapshots
