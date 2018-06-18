@@ -202,8 +202,8 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
         backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     elif interval == 'yearly' and min_complete_snapshot_delta > 3600*24*365:
         backup_id = _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    elif (backup_id is None) and (not _has_backup(backup_client, volume)):
-        # if there is no backup already and none being created on this pass,
+    elif not _has_backup(backup_client, volume):
+        # if there is no backup already and none being created on this pass (due to interval),
         # create one (without waiting for interval to elapse)
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshots found - copying latest snapshot", {"volume": volume.id, "latest_snapshot": latest_complete_snapshot_id}))
         _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
