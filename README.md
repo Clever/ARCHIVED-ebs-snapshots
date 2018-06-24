@@ -6,11 +6,10 @@
 
 ## Usage
 
-This requires `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, which should be set in `~/.aws/credentials`.
-
 ```
+AWS_ACCESS_KEY_ID=your_key \
+AWS_SECRET_ACCESS_KEY=your_secret \
 AWS_REGION=your_region \
-AWS_BACKUP_REGION=your_backup_region \
 BACKUP_CONFIG=s3://your-bucket/snapshots-config.yml \
 python main.py
 ```
@@ -48,7 +47,6 @@ You must specify these env vars in order to connect to AWS and to choose the con
 AWS_ACCESS_KEY_ID      # Your AWS Credentials
 AWS_SECRET_ACCESS_KEY  # Your AWS Credentials
 AWS_REGION             # AWS Region, e.g. us-west-1
-AWS_BACKUP_REGION	   # AWS Region for backups, e.g. us-west-2
 BACKUP_CONFIG          # Path to backup config. May be local file or s3 path (see "Configuration")
 ```
 

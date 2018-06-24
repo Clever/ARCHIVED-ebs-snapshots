@@ -16,10 +16,8 @@ class TestSnapshotManager(unittest.TestCase):
         # mock out details for snapshot_manager.run
         snapshot_manager._ensure_snapshot = MagicMock()
         snapshot_manager._remove_old_snapshots = MagicMock()
-        snapshot_manager._remove_old_snapshot_backups = MagicMock()
 
         # run function for volume
         snapshot_manager.run(conn, volume.id, 'daily', 0, '')
         self.assertEqual(1, snapshot_manager._ensure_snapshot.call_count)
         self.assertEqual(1, snapshot_manager._remove_old_snapshots.call_count)
-        self.assertEqual(1, snapshot_manager._remove_old_snapshot_backups.call_count)
