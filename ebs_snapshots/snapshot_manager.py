@@ -267,7 +267,7 @@ def _remove_old_snapshots(connection, volume, max_snapshots):
     :param volume: Volume to check
     :returns: None
     """
-    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshots", data={"volume":volume}))
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "removing old snapshots", data={"volume":volume.id}))
 
     retention = max_snapshots
     if not type(retention) is int and retention >= 0:
