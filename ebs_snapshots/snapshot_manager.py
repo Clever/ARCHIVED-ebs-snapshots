@@ -2,9 +2,11 @@
 import datetime
 import yaml
 import boto3
+from botocore.exceptions import ClientError
 from boto.exception import EC2ResponseError
 import kayvee
 import logging
+
 
 """ Configure the valid backup intervals """
 VALID_INTERVALS = [
@@ -96,25 +98,53 @@ def _copy_snapshot(backup_client, volume, snapshot_id, name):
     """
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "copying snapshot", {"volume": volume.id, "source_snapshot": snapshot_id}))
     region = _availability_zone_to_region_name(volume.zone)
-    response = backup_client.copy_snapshot(
-        SourceRegion=region,
-        SourceSnapshotId=snapshot_id,
-        Encrypted=True,
-        Description='copy of {}'.format(snapshot_id))
 
-    backup_client.create_tags(
-        Resources=[response["SnapshotId"]],
-        Tags=[
-            {"Key":"Name", 'Value':name},
-            {"Key":"creator", 'Value':"ebs-snapshots"},
-            {"Key":"snapshot_source", 'Value':snapshot_id},
-            {"Key":"volume-id", 'Value':volume.id}
-        ]
-    )
+    try:
+        response = backup_client.copy_snapshot(
+            SourceRegion=region,
+            SourceSnapshotId=snapshot_id,
+            Encrypted=True,
+            Description='copy of {}'.format(snapshot_id))
+
+    except ClientError as error:
+        if error.response["Error"]["Code"] == "ResourceLimitExceeded":
+            logging.info(kayvee.formatLog("ebs-snapshots", "info", "copying snapshot", {
+                "volume": volume.id,
+                "source_snapshot": snapshot_id,
+                "name": name
+            }))
+        else:
+            logging.error(kayvee.formatLog("ebs-snapshots", "error", "snapshot copy error", {
+                "name": name,
+                "volume": volume.id,
+                "source_snapshot": snapshot_id,
+                "error": error.response["Error"]["Code"]
+            }))
+        return None
+
+    try:
+        backup_client.create_tags(
+            Resources=[response["SnapshotId"]],
+            Tags=[
+                {"Key":"Name", "Value":name},
+                {"Key":"creator", "Value":"ebs-snapshots"},
+                {"Key":"source_snapshot", "Value":snapshot_id},
+                {"Key":"volume-id", "Value":volume.id}
+            ]
+        )
+    except ClientError as error:
+        logging.error(kayvee.formatLog("ebs-snapshots", "error", "unable to tag snapshot copy (error)", {
+            "name": name,
+            "volume": volume.id,
+            "source_snapshot": snapshot_id,
+            "error": error.response["Error"]["Code"]
+        }))
+        return response["SnapshotId"]
+
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "copied snapshot successfully", {
         "name": name,
         "volume": volume.id,
-        "snapshot_source": snapshot_id,
+        "source_snapshot": snapshot_id,
         "snapshot_copy": response["SnapshotId"]
     }))
 
@@ -201,12 +231,20 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
 
 def _has_backup(client, volume):
-    backup_snapshots = client.describe_snapshots(Filters=[
-        {
-            'Name': "tag:volume-id",
-            'Values': [volume.id]
-        }
-    ])
+    try:
+        backup_snapshots = client.describe_snapshots(Filters=[
+            {
+                'Name': "tag:volume-id",
+                'Values': [volume.id]
+            }
+        ])
+    except ClientError as error:
+        logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "error describing backup snapshots", {
+            "volume": volume.id,
+            "error": error.response["Error"]["Code"]
+        }))
+        # skip creating backup, so we don't try to create a ton in longstanding error cases
+        return True
     return len(backup_snapshots['Snapshots']) > 0
 
 def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
@@ -250,10 +288,10 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "deleting backup snapshot", {"snapshot": snapshot.id}))
         try:
             snapshot.delete()
-        except EC2ResponseError as error:
-            logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "could not remove backup snapshot", {
+        except Exception as e:  # @TODO: how to get exceptions for boto3 resource?
+            logging.error(kayvee.formatLog("ebs-snapshots", "error", "could not remove backup snapshot (error)", {
                 "snapshot": snapshot.id,
-                "msg": error.message
+                "error": str(e)
             }))
 
     logging.info(kayvee.formatLog("ebs-snapshots", "info", "done deleting snapshot backups", data={"volume":volume_id}))
