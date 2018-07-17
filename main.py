@@ -2,6 +2,7 @@ from ebs_snapshots import ebs_snapshots_daemon
 import sys
 import kayvee
 import logging
+import traceback
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
@@ -23,4 +24,7 @@ if __name__ == "__main__":
                 } ]
             }
         }))
+        traceback.print_stack()
+        print '--------------'
+        traceback.print_exc()
         sys.exit(1)
