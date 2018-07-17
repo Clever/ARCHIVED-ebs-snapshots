@@ -6,7 +6,10 @@ from botocore.exceptions import ClientError
 from boto.exception import EC2ResponseError
 import kayvee
 import logging
+import os
 
+
+aws_backup_region = os.environ.get('AWS_BACKUP_REGION')
 
 """ Configure the valid backup intervals """
 VALID_INTERVALS = [
@@ -282,7 +285,7 @@ def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no old backup snapshots to remove", data={"volume":volume_id}))
         return
 
-    ec2 = boto3.resource('ec2')
+    ec2 = boto3.resource('ec2', region_name=aws_backup_region)
     for snapshotInfo in snapshots:
         snapshot = ec2.Snapshot(snapshotInfo["SnapshotId"])
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "deleting backup snapshot", {"snapshot": snapshot.id}))
