@@ -18,6 +18,7 @@ jobs:
         name: Set up CircleCI artifacts directories
     - run: sudo apt-get update
     - run: sudo apt-get install python-dev
+    - run: sudo python -m pip install --upgrade pip==9.0.3
     - run: make test
     - run: $HOME/ci-scripts/circleci/report-card $RC_DOCKER_USER $RC_DOCKER_PASS "$RC_DOCKER_EMAIL" $RC_GITHUB_TOKEN
     - run:
