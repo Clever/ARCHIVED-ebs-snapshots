@@ -14,7 +14,7 @@ deps:
 
 # Check for errors in Python files
 pylint: deps
-	find . | grep .py$$ | xargs pylint -E
+	find . | grep .py$$ | xargs ${HOME}/.local/bin/pylint -E
 
 lint: deps
 	pep8 --config ./pep8 . || true
@@ -24,7 +24,7 @@ format: deps
 
 # nose test-runner
 nose:
-	nosetests test
+	${HOME}/.local/bin/nosetests test
 
 test: deps pylint nose
 
