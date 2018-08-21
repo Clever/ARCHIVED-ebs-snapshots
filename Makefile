@@ -10,7 +10,7 @@ release:
 	python setup.py sdist upload
 
 deps:
-	pip install -r requirements-dev.txt
+	pip install --user -r requirements-dev.txt
 
 # Check for errors in Python files
 pylint: deps
