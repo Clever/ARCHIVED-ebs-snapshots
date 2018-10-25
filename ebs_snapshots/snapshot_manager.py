@@ -217,38 +217,13 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
     }
     if min_delta > intervalToSeconds[interval]:
         _create_snapshot(connection, volume, name)
+        # copy the last one we created to backup region
+        if latest_complete_snapshot_id is None:
+            logging.info(kayvee.formatLog("ebs-snapshots", "info", "waiting to create backup snapshot until snapshot is complete", {"volume": volume.id}))
+        else:
+            _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
     else:
         logging.info(kayvee.formatLog("ebs-snapshots", "info", "no snapshot needed", {"volume": volume.id, "lastest_snapshot_id": latest_snapshot_id}))
-
-    # Make a backup copy of latest completed snapshot if there is one completed and latest is older than interval.
-    if latest_complete_snapshot_id is None:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "waiting to create backup snapshot until snapshot is complete", {"volume": volume.id}))
-    elif min_complete_snapshot_delta > intervalToSeconds[interval]:
-        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    elif not _has_backup(backup_client, volume):
-        # If the interval has not elapsed but there is a completed snapshot
-        # AND we don't yet have a backup, create one without waiting for latest to be older than interval.
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshots found - copying latest snapshot", {"volume": volume.id, "source_snapshot": latest_complete_snapshot_id}))
-        _copy_snapshot(backup_client, volume, latest_complete_snapshot_id, name)
-    else:
-        logging.info(kayvee.formatLog("ebs-snapshots", "info", "no backup snapshot needed", {"volume": volume.id}))
-
-def _has_backup(client, volume):
-    try:
-        backup_snapshots = client.describe_snapshots(Filters=[
-            {
-                'Name': "tag:volume-id",
-                'Values': [volume.id]
-            }
-        ])
-    except ClientError as error:
-        logging.warning(kayvee.formatLog("ebs-snapshots", "warning", "error describing backup snapshots", {
-            "volume": volume.id,
-            "error": error.response["Error"]["Code"]
-        }))
-        # skip creating backup, so we don't try to create a ton in longstanding error cases
-        return True
-    return len(backup_snapshots['Snapshots']) > 0
 
 def _remove_old_snapshot_backups(client, volume_id, max_snapshots):
     """ Remove old snapshot backups
