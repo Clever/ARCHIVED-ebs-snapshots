@@ -24,7 +24,7 @@ jobs:
         command: |-
           cd /tmp/ && wget https://bootstrap.pypa.io/get-pip.py && sudo python get-pip.py
           sudo apt-get install python-dev
-          sudo pip install --upgrade --force-reinstall awscli && aws --version
+          sudo pip install --upgrade awscli && aws --version
           pip install --upgrade --user awscli
         name: Install awscli for ECR publish
     - run: $HOME/ci-scripts/circleci/docker-publish $DOCKER_USER $DOCKER_PASS "$DOCKER_EMAIL" $DOCKER_ORG
