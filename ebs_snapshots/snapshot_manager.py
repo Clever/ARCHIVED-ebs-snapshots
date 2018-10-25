@@ -52,7 +52,7 @@ def run(connection, backup_client, volume_id, interval='daily', max_snapshots=0,
             }
         }))
         return
-
+    logging.info(kayvee.formatLog("ebs-snapshots", "info", "run", {"volume": volume_id, "count": len(volumes)}))
     for volume in volumes:
         _ensure_snapshot(connection, backup_client, volume, interval, name)
         _remove_old_snapshots(connection, volume, max_snapshots)
