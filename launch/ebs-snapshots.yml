@@ -1,6 +1,8 @@
 run:
   type: docker
 env:
+- AWS_ACCESS_KEY_ID
+- AWS_SECRET_ACCESS_KEY
 - AWS_REGION
 - AWS_BACKUP_REGION
 - BACKUP_CONFIG
@@ -8,10 +10,3 @@ resources:
   cpu: 0.0  # no CPU to improve resource usage (https://clever.atlassian.net/browse/INFRA-2120)
   max_mem: 0.05
 team: eng-infra
-aws:
-  s3:
-    read:
-    - clever-ebs-snapshots
-    write
-    - clever-ebs-snapshots
-  custom: true
