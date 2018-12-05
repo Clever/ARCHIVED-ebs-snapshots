@@ -6,7 +6,7 @@
 
 ## Usage
 
-This requires `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, which should be set in `~/.aws/credentials`.
+This requires a valid AWS session (see go/iam).
 
 ```
 AWS_REGION=your_region \
@@ -45,21 +45,10 @@ vol-fake5678:
 You must specify these env vars in order to connect to AWS and to choose the configuration file.
 
 ```
-AWS_ACCESS_KEY_ID      # Your AWS Credentials
-AWS_SECRET_ACCESS_KEY  # Your AWS Credentials
 AWS_REGION             # AWS Region, e.g. us-west-1
 AWS_BACKUP_REGION	   # AWS Region for backups, e.g. us-west-2
 BACKUP_CONFIG          # Path to backup config. May be local file or s3 path (see "Configuration")
 ```
-
-### AWS Policy
-
-You'll need to grant the proper IAM permissions to the AWS credentials you're using.
-
-1. ec2 volume, snapshot, and tag, permissions - to create snapshots of volumes and tag them
-1. s3 bucket permissions - allows reading your config file from an s3 path
-
-See the included [example policy](aws-iam-policy.ebs-snapshots.json).
 
 ### Optional: Running in Docker
 
@@ -73,8 +62,6 @@ Run as a docker container, making sure to specify required env vars:
 
 ```
 docker run \
--e AWS_ACCESS_KEY_ID_ID=$AWS_ACCESS_KEY_ID_ID \
--e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
 -e AWS_REGION=$AWS_REGION \
 -e BACKUP_CONFIG=$BACKUP_CONFIG \
 local/ebs-snapshots
