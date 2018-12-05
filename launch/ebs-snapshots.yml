@@ -10,8 +10,8 @@ resources:
 team: eng-infra
 aws:
   s3:
-    read:
-    - clever-ebs-snapshots
-    write
-    - clever-ebs-snapshots
+  read:
+  - clever-ebs-snapshots
+  write
+  - clever-ebs-snapshots
   custom: true
