@@ -191,7 +191,7 @@ def _ensure_snapshot(connection, backup_client, volume, interval, name):
         # Determine time since latest snapshot.
         timestamp = datetime.datetime.strptime(
             snapshot.start_time,
-            '%Y-%m-%dT%H:%M:%S.000Z')
+            '%Y-%m-%dT%H:%M:%S.%fZ')
         delta_seconds = int(
             (datetime.datetime.utcnow() - timestamp).total_seconds())
 
